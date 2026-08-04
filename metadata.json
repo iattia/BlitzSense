@@ -1,0 +1,5 @@
+{
+  "name": "BlitzSense",
+  "description": "Chess intuition training built from real rated games with fast local engine analysis.",
+  "requestFramePermissions": []
+}
