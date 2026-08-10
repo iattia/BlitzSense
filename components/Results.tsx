@@ -5,6 +5,7 @@ import { addBookmark, removeBookmark, isBookmarked } from '../utils/storage';
 import {
   Target, TrendingUp, RotateCcw, X, ChevronLeft, ChevronRight,
   Star, ExternalLink, Zap, Clock, Share2, Check, Bookmark, BookmarkCheck,
+  BookOpen, Flame,
 } from 'lucide-react';
 import { Chess } from 'chess.js';
 import { EvalBar, formatEngineEvaluation } from './ui/EvalBar';
@@ -122,7 +123,7 @@ export const Results: React.FC<ResultsProps> = ({ stats, difficulty, boardTheme,
         {round.openingName && (
           <div className="w-full max-w-md mb-3">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700 text-xs">
-              <span className="text-slate-500">♟</span>
+              <BookOpen className="h-3 w-3 text-slate-500" aria-hidden="true" />
               <span className="text-slate-300 font-semibold">{round.openingName}</span>
             </div>
           </div>
@@ -278,7 +279,7 @@ export const Results: React.FC<ResultsProps> = ({ stats, difficulty, boardTheme,
           </div>
           {streak > 0 && (
             <div className="bg-orange-500/10 p-2.5 rounded-md border border-orange-500/20">
-              <span className="text-base block text-center mb-1">🔥</span>
+              <Flame className="mx-auto mb-1 h-4 w-4 text-orange-400" aria-hidden="true" />
               <div className="text-lg font-bold text-orange-400">{streak}</div>
               <div className="text-xs text-slate-500">Day Streak</div>
             </div>
@@ -294,12 +295,12 @@ export const Results: React.FC<ResultsProps> = ({ stats, difficulty, boardTheme,
                 title={`Round ${i + 1}: ${res.beatGm ? 'Better than the played move' : res.isCorrect ? 'Correct' : 'Incorrect'}${res.openingName ? ` · ${res.openingName}` : ''}`}
                 className={`w-7 h-7 rounded-full flex items-center justify-center transition-transform hover:scale-125 focus:outline-none text-xs font-bold ${res.beatGm ? 'bg-yellow-400 text-slate-900' :
                   res.isCorrect ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-                {res.beatGm ? '★' : i + 1}
+                {res.beatGm ? <Star className="h-3.5 w-3.5" aria-label="Better than the played move" /> : i + 1}
               </button>
             ))}
           </div>
           {beatGmCount > 0 && (
-            <div className="text-yellow-400 text-xs mt-2 font-semibold">★ = Better than the move played in the game</div>
+            <div className="mt-2 flex items-center justify-center gap-1 text-xs font-semibold text-yellow-400"><Star className="h-3 w-3" aria-hidden="true" /> Better than the move played in the game</div>
           )}
         </div>
       </div>
@@ -332,10 +333,10 @@ export const Results: React.FC<ResultsProps> = ({ stats, difficulty, boardTheme,
       <div className="w-full max-w-xs mb-2">
         <button
           onClick={async () => {
-            const emojis = stats.history.map((r) =>
-              r.beatGm ? '⭐' : r.isCorrect ? '🟢' : r.userMove ? '🔴' : '⏱'
-            ).join('');
-            const streakStr = streak > 0 ? ` | 🔥 ${streak}d streak` : '';
+            const roundSummary = stats.history.map((r) =>
+              r.beatGm ? 'BETTER' : r.isCorrect ? 'CORRECT' : r.userMove ? 'MISSED' : 'TIMEOUT'
+            ).join(' · ');
+            const streakStr = streak > 0 ? ` | ${streak}d streak` : '';
             // Opening breakdown
             const openingCounts: Record<string, number> = {};
             for (const r of stats.history) {
@@ -346,9 +347,9 @@ export const Results: React.FC<ResultsProps> = ({ stats, difficulty, boardTheme,
             const openingLine = Object.entries(openingCounts)
               .sort((a, b) => b[1] - a[1])
               .slice(0, 3)
-              .map(([o, c]) => `♟${o}×${c}`)
-              .join(' ');
-            const text = `⚡ BlitzSense  ${difficulty} · ${stats.totalPlayed} positions\nScore: ${stats.score} | Accuracy: ${Math.round((stats.correctCount / stats.totalPlayed) * 100)}%${streakStr}\n${emojis}${openingLine ? `\n${openingLine}` : ''}\nPlay at blitzsense.com`;
+              .map(([opening, count]) => `${opening} x${count}`)
+              .join(' · ');
+            const text = `BlitzSense · ${difficulty} · ${stats.totalPlayed} positions\nScore: ${stats.score} | Accuracy: ${Math.round((stats.correctCount / stats.totalPlayed) * 100)}%${streakStr}\n${roundSummary}${openingLine ? `\nOpenings: ${openingLine}` : ''}\nPlay at blitzsense.com`;
             try {
               await navigator.clipboard.writeText(text);
             } catch {

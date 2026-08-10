@@ -9,7 +9,7 @@ import { EvalBar, formatEngineEvaluation } from './ui/EvalBar';
 import { MaterialCounter } from './ui/MaterialCounter';
 import {
   CheckCircle2, XCircle, Users, Star, ExternalLink,
-  ChevronLeft, ChevronRight, BookOpen, Clock,
+  ChevronLeft, ChevronRight, BookOpen, Clock, Flame,
 } from 'lucide-react';
 import { Button } from './ui/Button';
 
@@ -723,7 +723,7 @@ export const Game: React.FC<GameProps> = ({
             <div className="text-3xl font-extrabold text-cyan-400 font-mono mt-1">{animatedScore}</div>
             {stats.streak >= 2 && (
               <div className="mt-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 text-xs font-bold">
-                🔥 {stats.streak} streak
+                <Flame className="h-3.5 w-3.5" aria-hidden="true" /> {stats.streak} streak
               </div>
             )}
           </div>
@@ -733,7 +733,7 @@ export const Game: React.FC<GameProps> = ({
             <div className="text-slate-300 text-sm truncate">{rawPos?.players}</div>
             {rawPos?.openingName && (
               <div className="mt-2 inline-flex max-w-full items-center gap-1 rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-400">
-                <span aria-hidden="true">♟</span><span className="truncate">{rawPos.openingName}</span>
+                <BookOpen className="h-3 w-3 shrink-0" aria-hidden="true" /><span className="truncate">{rawPos.openingName}</span>
               </div>
             )}
             <div className="text-slate-500 text-xs mt-1">Local Stockfish evaluation</div>

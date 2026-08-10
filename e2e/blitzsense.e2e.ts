@@ -8,6 +8,42 @@ test('settings Done button closes the dialog', async ({ page }) => {
   await expect(page.getByRole('dialog', { name: 'Training settings' })).toBeHidden();
 });
 
+test('history navigation stays readable and closes cleanly', async ({ page }) => {
+  await page.goto('/');
+  const historyButton = page.getByRole('button', { name: 'View history' });
+  await historyButton.click();
+
+  const dialog = page.getByRole('dialog', { name: 'Training history' });
+  await expect(dialog).toBeVisible();
+  for (const name of ['Sessions', 'Stats', 'Rating', 'Players', 'Global']) {
+    await expect(dialog.getByRole('tab', { name })).toBeVisible();
+  }
+
+  await dialog.getByRole('tab', { name: 'Stats' }).click();
+  await expect(dialog.getByRole('heading', { name: 'Lifetime stats' })).toBeVisible();
+  await page.keyboard.press('ArrowRight');
+  await expect(dialog.getByRole('tab', { name: 'Rating' })).toBeFocused();
+  await expect(dialog.getByRole('heading', { name: 'Intuition rating' })).toBeVisible();
+  await dialog.getByRole('tab', { name: 'Players' }).click();
+  await expect(dialog.getByRole('heading', { name: 'Player accuracy' })).toBeVisible();
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(historyButton).toBeFocused();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await historyButton.click();
+  await expect(dialog).toBeVisible();
+  for (const name of ['Sessions', 'Stats', 'Rating', 'Players', 'Global']) {
+    const tab = dialog.getByRole('tab', { name });
+    await expect(tab).toBeVisible();
+    const box = await tab.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+  }
+});
+
 test('hides evaluation until Analysis, flips material rows, and supports keyboard promotion', async ({ page }) => {
   await page.goto('/e2e/');
   const top = page.getByTestId('material-top').locator('[aria-label]');

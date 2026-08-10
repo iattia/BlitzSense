@@ -129,7 +129,6 @@ export interface Milestone {
   id: string;
   label: string;
   description: string;
-  icon: string;       // emoji
   threshold: number;  // value to reach
   category: 'games' | 'accuracy' | 'streak' | 'gm-beats' | 'score';
 }
