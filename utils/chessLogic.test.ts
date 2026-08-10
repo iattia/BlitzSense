@@ -53,9 +53,10 @@ describe('chess training logic', () => {
 
   it('formats Chessground arrow labels with the expected shape', () => {
     const start = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-    expect(getMoveShapes(start, { engineMove: 'e4', gmMove: 'd4' })).toEqual([
+    expect(getMoveShapes(start, { engineMove: 'e4', gmMove: 'd4', userMove: 'c4' })).toEqual([
       { orig: 'e2', dest: 'e4', brush: 'green', label: { text: 'Engine #1' } },
       { orig: 'd2', dest: 'd4', brush: 'blue', label: { text: 'Played Move' } },
+      { orig: 'c2', dest: 'c4', brush: 'red', label: { text: 'Your Move' } },
     ]);
   });
 

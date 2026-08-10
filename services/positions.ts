@@ -1,7 +1,7 @@
 import { ChessPosition, Difficulty, EngineDepth, GameTypeFilter, RawPosition, ColorPref, RatingRange } from '../types';
 import { Chess } from 'chess.js';
 import { analyzeLocally, type LocalAnalysisResult } from './localEngine';
-import { seededShuffle, seedFromString } from '../utils/random';
+import { randomShuffle, seededShuffle, seedFromString } from '../utils/random';
 import { getPersistentCache, setPersistentCache } from '../utils/persistentCache';
 
 // ── Cache for player lists and games ─────────────────────────────────────────────
@@ -9,7 +9,9 @@ const PLAYER_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 const GAME_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
 const BROADCAST_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
 const ANALYSIS_CACHE_TTL = 24 * 60 * 60 * 1000; // engine lines are stable for a position
-const LIVE_SESSION_BUDGET_MS = 8_000;
+const LIVE_SESSION_BUDGET_MS = 12_000;
+const PLAYER_DISCOVERY_TIMEOUT_MS = 2_500;
+const GAME_REQUEST_TIMEOUT_MS = 4_000;
 const MAX_POSITIONS_PER_GAME = 2;
 const providerWarnings = new Set<string>();
 
@@ -157,6 +159,7 @@ async function fetchLichessTopPlayers(
     const response = await fetchWithTimeout(
       `https://lichess.org/api/player/top/${count}/${perfType}`,
       { headers: { Accept: 'application/json' }, signal },
+      PLAYER_DISCOVERY_TIMEOUT_MS,
     );
 
     if (!response.ok) {
@@ -216,7 +219,11 @@ async function fetchChessComTopPlayers(
   if (cached) return cached.slice(0, count);
 
   try {
-    const response = await fetchWithTimeout('https://api.chess.com/pub/leaderboards', { signal });
+    const response = await fetchWithTimeout(
+      'https://api.chess.com/pub/leaderboards',
+      { signal },
+      PLAYER_DISCOVERY_TIMEOUT_MS,
+    );
     if (!response.ok) {
       warnProviderOnce('chesscom-leaderboard', `[Chess.com] Leaderboard unavailable (${response.status}); using reserve players.`);
       return CHESSCOM_FALLBACK.slice(0, count);
@@ -295,13 +302,20 @@ async function fetchLichessGames(
       clocks: 'false', evals: 'false', opening: 'true',
     });
     if (until) params.set('until', String(until));
-    const response = await fetchWithTimeout(
-      `https://lichess.org/api/games/user/${username}?${params.toString()}`,
-      { headers: { Accept: 'application/x-ndjson' }, signal },
-    );
+    let response: Response | null = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      response = await fetchWithTimeout(
+        `https://lichess.org/api/games/user/${username}?${params.toString()}`,
+        { headers: { Accept: 'application/x-ndjson' }, signal },
+        GAME_REQUEST_TIMEOUT_MS,
+      );
+      if (response.status !== 429) break;
+      const retryAfter = Number(response.headers.get('Retry-After'));
+      await waitForRetry(Number.isFinite(retryAfter) ? Math.min(retryAfter * 1000, 1_500) : 500, signal);
+    }
 
-    if (!response.ok) {
-      warnProviderOnce('lichess-games', `[Lichess] Some game requests failed (${response.status}); continuing with other sources.`);
+    if (!response?.ok) {
+      warnProviderOnce('lichess-games', `[Lichess] Some game requests failed (${response?.status ?? 'unknown'}); continuing with other sources.`);
       return [];
     }
 
@@ -380,7 +394,11 @@ async function fetchChessComJson<T>(url: string, signal?: AbortSignal): Promise<
   const request = async (): Promise<T | null> => {
     for (let attempt = 0; attempt < 2; attempt++) {
       if (signal?.aborted) throw abortError();
-      const response = await fetchWithTimeout(url, { headers: { Accept: 'application/json' }, signal });
+      const response = await fetchWithTimeout(
+        url,
+        { headers: { Accept: 'application/json' }, signal },
+        GAME_REQUEST_TIMEOUT_MS,
+      );
       if (response.status !== 429) return response.ok ? response.json() as Promise<T> : null;
 
       const retryAfter = Number(response.headers.get('Retry-After'));
@@ -500,7 +518,7 @@ async function fetchLichessBroadcastPositions(
     console.log(`[Broadcast] Found ${broadcasts.length} broadcasts`);
 
     // Fetch PGN from a selection of recent rounds
-    const roundsToFetch = broadcasts.slice(0, 8);
+    const roundsToFetch = randomShuffle(broadcasts).slice(0, 8);
 
     await Promise.all(roundsToFetch.map(async (bc) => {
       try {
@@ -514,7 +532,7 @@ async function fetchLichessBroadcastPositions(
         if (!pgnResp.ok) return;
 
         const pgn = await pgnResp.text();
-        const games = pgn.split('\n\n[').map((g, i) => i === 0 ? g : '[' + g).filter(g => g.trim());
+        const games = randomShuffle(pgn.split('\n\n[').map((g, i) => i === 0 ? g : '[' + g).filter(g => g.trim()));
 
         for (const gamePgn of games) {
           try {
@@ -534,20 +552,20 @@ async function fetchLichessBroadcastPositions(
             const whiteElo = parseInt(whiteEloMatch?.[1] ?? '0') || 0;
             const blackElo = parseInt(blackEloMatch?.[1] ?? '0') || 0;
             const year = dateMatch?.[1]?.slice(0, 4) ?? new Date().getFullYear().toString();
-            const gameUrl = siteMatch?.[1] ?? '';
+            const gameUrl = siteMatch?.[1] ?? bc.round.url ?? '';
             const openingName = openingMatch?.[1] ??
               (ecoUrlMatch ? ecoUrlMatch[1].split('/').pop()?.replace(/-/g, ' ')
                 .replace(/\b\w/g, c => c.toUpperCase()) : undefined);
 
-            // Only process games with titled players (both rated >= 2400 or name indicates GM)
-            if (whiteElo < 2400 && blackElo < 2400 && whiteElo !== 0) continue;
+            // Both ratings must be known so the selected rating range remains strict.
+            if (whiteElo <= 0 || blackElo <= 0) continue;
+            // Only process games with at least one top-level player.
+            if (whiteElo < 2400 && blackElo < 2400) continue;
             // Apply rating range filter
             const minR = ratingRange.min ?? 2000;
             const maxR = ratingRange.max ?? null;
-            if (whiteElo > 0 && whiteElo < minR) continue;
-            if (blackElo > 0 && blackElo < minR) continue;
-            if (maxR !== null && whiteElo > 0 && whiteElo > maxR) continue;
-            if (maxR !== null && blackElo > 0 && blackElo > maxR) continue;
+            if (whiteElo < minR || blackElo < minR) continue;
+            if (maxR !== null && (whiteElo > maxR || blackElo > maxR)) continue;
 
             // Generate a stable game ID from the game URL or player+date combo
             const gameId = gameUrl
@@ -791,7 +809,7 @@ export async function fetchRawPositions(
   const hasOpeningFilter = normalizedOpeningFilters.length > 0;
 
   // All live providers share one session-level budget. When it expires we keep
-  // any useful live positions and fill the remainder from the bundled reserve.
+  // any matching live positions rather than silently substituting synthetic ones.
   const liveController = new AbortController();
   const abortLive = () => liveController.abort();
   if (signal?.aborted) abortLive();
@@ -820,7 +838,7 @@ export async function fetchRawPositions(
   }
 
   function selectResult(pool: RawPosition[], allowRelaxedVariety = false): RawPosition[] {
-    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    const shuffled = randomShuffle(pool);
     const result: RawPosition[] = [];
     const gameCounts = new Map<string, number>();
     const playerCounts = new Map<string, number>();
@@ -855,13 +873,6 @@ export async function fetchRawPositions(
         if (result.length >= count) break;
         addCandidate(p, count, 1);
       }
-
-      // Keep source-game repeats as a last resort too. Two positions is
-      // enough to fill a constrained session without flooding it from one game.
-      for (const p of shuffled) {
-        if (result.length >= count) break;
-        addCandidate(p, count, 2);
-      }
     }
 
     return result;
@@ -880,10 +891,9 @@ export async function fetchRawPositions(
     const blackRating = game.players.black.rating ?? 0;
     const minR = effectiveMin;
     const maxR = effectiveMax;
-    if (whiteRating > 0 && whiteRating < minR) return;
-    if (blackRating > 0 && blackRating < minR) return;
-    if (maxR !== null && whiteRating > 0 && whiteRating > maxR) return;
-    if (maxR !== null && blackRating > 0 && blackRating > maxR) return;
+    if (whiteRating <= 0 || blackRating <= 0) return;
+    if (whiteRating < minR || blackRating < minR) return;
+    if (maxR !== null && (whiteRating > maxR || blackRating > maxR)) return;
 
     processedGameIds.add(game.id);
 
@@ -904,7 +914,7 @@ export async function fetchRawPositions(
       (colorPref !== 'white' || position.turn === 'w') &&
       (colorPref !== 'black' || position.turn === 'b'));
 
-    for (const pos of seededShuffle(eligiblePositions, seedFromString(game.id)).slice(0, MAX_POSITIONS_PER_GAME)) {
+    for (const pos of randomShuffle(eligiblePositions).slice(0, MAX_POSITIONS_PER_GAME)) {
 
       rawCandidates.push({
         id: `${game.id}_m${pos.moveNumber}_${pos.turn}`,
@@ -936,10 +946,9 @@ export async function fetchRawPositions(
     const blackRating = game.black.rating ?? 0;
     const minR = effectiveMin;
     const maxR = effectiveMax;
-    if (whiteRating > 0 && whiteRating < minR) return;
-    if (blackRating > 0 && blackRating < minR) return;
-    if (maxR !== null && whiteRating > 0 && whiteRating > maxR) return;
-    if (maxR !== null && blackRating > 0 && blackRating > maxR) return;
+    if (whiteRating <= 0 || blackRating <= 0) return;
+    if (whiteRating < minR || blackRating < minR) return;
+    if (maxR !== null && (whiteRating > maxR || blackRating > maxR)) return;
 
     processedGameIds.add(ccId);
 
@@ -960,7 +969,7 @@ export async function fetchRawPositions(
       (colorPref !== 'white' || position.turn === 'w') &&
       (colorPref !== 'black' || position.turn === 'b'));
 
-    for (const pos of seededShuffle(eligiblePositions, seedFromString(ccId)).slice(0, MAX_POSITIONS_PER_GAME)) {
+    for (const pos of randomShuffle(eligiblePositions).slice(0, MAX_POSITIONS_PER_GAME)) {
 
       rawCandidates.push({
         id: `${ccId}_m${pos.moveNumber}_${pos.turn}`,
@@ -1014,8 +1023,8 @@ export async function fetchRawPositions(
     ...Array.from(lichessPlayerMap.values()).map((p) => ({ ...p, source: 'lichess' as const })),
     ...chessComTopPlayers.map((p) => ({ ...p, source: 'chesscom' as const })),
   ];
-  if (!hasOpeningFilter) allPlayers.sort(() => Math.random() - 0.5);
-  else allPlayers = allPlayers.slice(0, 4);
+  if (!hasOpeningFilter) allPlayers = randomShuffle(allPlayers);
+  else allPlayers = randomShuffle(allPlayers).slice(0, 4);
 
   // ── Iterative batch fetching ──────────────────────────────────────────────
   // Process players in batches of 4. After each batch, check if we already
@@ -1037,10 +1046,10 @@ export async function fetchRawPositions(
         try {
           if (player.source === 'lichess') {
             const games = await fetchLichessGames(player.username, gamesPerPlayer, filter, liveSignal);
-            if (!liveSignal.aborted) for (const g of games) addLichessGame(g, player);
+            if (!liveSignal.aborted) for (const g of randomShuffle(games)) addLichessGame(g, player);
           } else {
             const games = await fetchChessComGames(player.username, gamesPerPlayer, filter, liveSignal);
-            if (!liveSignal.aborted) for (const g of games) addChessComGame(g, player);
+            if (!liveSignal.aborted) for (const g of randomShuffle(games)) addChessComGame(g, player);
           }
         } catch { /* individual player failure is non-fatal */ }
       }),
@@ -1051,9 +1060,9 @@ export async function fetchRawPositions(
     console.log(`[BlitzSense] After batch ${Math.floor(i / BATCH_SIZE) + 1}: ${n}/${count} positions (${rawCandidates.length} raw candidates)`);
     if (onProgress) onProgress(n);
     // A provider outage or browser network policy should not make users wait
-    // while every leaderboard account is probed. Fall back after three empty batches.
+    // while every leaderboard account is probed. Stop after three empty batches.
     if (!hasOpeningFilter && emptyBatches >= 3) {
-      console.warn('[BlitzSense] Live providers returned three empty batches; using the bundled reserve.');
+      console.warn('[BlitzSense] Live providers returned three empty batches; ending the live search early.');
       break;
     }
   }
@@ -1084,7 +1093,10 @@ export async function fetchRawPositions(
     return [];
   }
 
-  const filteredPool = applyOpeningFilter(rawCandidates);
+  // A normal training position must be traceable to its real source game.
+  // This also prevents a provider's malformed record from producing a missing link.
+  const sourcedCandidates = rawCandidates.filter((position) => /^https?:\/\//i.test(position.gameUrl));
+  const filteredPool = applyOpeningFilter(sourcedCandidates);
   // Try 1-per-game first
   let result = selectResult(filteredPool, false);
 
@@ -1100,23 +1112,8 @@ export async function fetchRawPositions(
 
   console.log(`[BlitzSense] Returning ${result.length} positions (${rawCandidates.length} raw, ${filteredPool.length} filtered)`);
 
-  // A requested opening is a hard constraint. Returning unrelated fallback
-  // positions makes the filter appear broken and trains the wrong repertoire.
-  if (hasOpeningFilter) {
-    finishLiveFetch();
-    if (result.length > 0) return result;
-    // Keep the filter strict even when live game providers are temporarily
-    // unavailable. The bundled reserve is tagged by opening and never leaks an
-    // unrelated position into the session.
-    return getFallbackRawPositions(difficulty, count, openingFilter);
-  }
   finishLiveFetch();
-  if (result.length >= count) return result;
-
-  const resultIds = new Set(result.map((position) => position.id));
-  const reserve = getFallbackRawPositions(difficulty, count)
-    .filter((position) => !resultIds.has(position.id));
-  return [...result, ...reserve].slice(0, count);
+  return result;
 }
 
 // ── Fetch positions from a single GM (for Daily Challenge) ───────────────────
@@ -1199,7 +1196,7 @@ export async function fetchRawPositionsForGM(
 
   const shuffled = dailyKey
     ? seededShuffle(candidates, seedFromString(`${dailyKey}:${playerUsername}`))
-    : [...candidates].sort(() => Math.random() - 0.5);
+    : randomShuffle(candidates);
   const result: RawPosition[] = [];
   const usedGameIds = new Set<string>();
 
@@ -1271,8 +1268,8 @@ export async function analyzeRawPosition(
 }
 
 // ── Fallback positions ───────────────────────────────────────────────────────
-// Used only when all three live sources fail. gameUrl is '' (empty) so the
-// UI correctly hides the link for these synthetic positions.
+// Kept as a last-resort daily-challenge reserve. Normal filtered sessions only
+// use traceable live games and never mix these synthetic positions into results.
 
 function getFallbackRawPositions(
   difficulty: Difficulty,
@@ -1469,8 +1466,8 @@ function getFallbackRawPositions(
   // Prefer the requested difficulty, but a complete session is better than a
   // mysteriously shortened one when live providers are unavailable.
   const pool = [
-    ...matching.sort(() => Math.random() - 0.5),
-    ...otherDifficulties.sort(() => Math.random() - 0.5),
+    ...randomShuffle(matching),
+    ...randomShuffle(otherDifficulties),
   ];
   return pool.slice(0, count).map((position) => ({ ...position, difficulty }));
 }

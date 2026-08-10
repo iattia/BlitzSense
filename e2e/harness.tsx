@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { Game } from '../components/Game';
 import { MaterialCounter } from '../components/ui/MaterialCounter';
@@ -13,9 +13,9 @@ const engineLines = [
   { move: 'a8=N', evaluation: { type: 'cp' as const, value: 300 } },
 ];
 const raw: RawPosition = {
-  id: 'e2e_promotion_m1_w', fen, turn: 'w', gmMove: 'a8=Q', difficulty: 'Hard',
+  id: 'e2e_promotion_m1_w', fen, turn: 'w', gmMove: 'a8=R', difficulty: 'Hard',
   players: 'Test White vs Test Black', year: '2026', gmUsername: 'Test White',
-  opponentUsername: 'Test Black', gameUrl: '', isGm: true,
+  opponentUsername: 'Test Black', gameUrl: 'https://lichess.org/e2etest', isGm: true,
 };
 const analyzed: ChessPosition = {
   ...raw,
@@ -27,12 +27,18 @@ const analyzed: ChessPosition = {
 function Harness() {
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const [orientation, setOrientation] = useState<'white' | 'black'>('white');
+  const [darkTheme, setDarkTheme] = useState(() => document.documentElement.classList.contains('dark'));
   const timeoutMode = params.get('mode') === 'timeout';
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkTheme);
+  }, [darkTheme]);
 
   return (
     <>
       <div className="fixed right-2 top-2 z-[200] rounded bg-slate-950 p-2" data-testid="material-demo">
         <button type="button" onClick={() => setOrientation((value) => value === 'white' ? 'black' : 'white')}>Flip material demo</button>
+        <button type="button" className="ml-2" onClick={() => setDarkTheme((value) => !value)}>Toggle theme</button>
         <div data-testid="material-top"><MaterialCounter fen={fen} orientation={orientation} side="top" /></div>
         <div data-testid="material-bottom"><MaterialCounter fen={fen} orientation={orientation} side="bottom" /></div>
       </div>

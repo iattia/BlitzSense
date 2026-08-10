@@ -5,7 +5,6 @@ interface EvalBarProps {
   /** Evaluation text (e.g. "+1.5", "-0.8", "M3", "-M2", "0.0") or raw centipawn number */
   evalScore?: string | number;
   orientation?: 'white' | 'black';
-  concealed?: boolean;
   className?: string;
 }
 
@@ -57,68 +56,35 @@ function getWhiteFillPercentage(cp: number, isMate: boolean): number {
 export const EvalBar: React.FC<EvalBarProps> = ({
   evalScore = '0.0',
   orientation = 'white',
-  concealed = false,
   className = '',
 }) => {
-  if (concealed) {
-    return (
-      <div
-        className={`relative overflow-hidden rounded-md border border-stone-700/40 bg-stone-100 shadow-inner ${className}`}
-        title="Evaluation hidden until you move"
-        aria-label="Stockfish evaluation hidden until you move"
-        style={{ width: '22px', alignSelf: 'stretch' }}
-      >
-        <div className="h-1/2 bg-stone-900" />
-        <div className="h-1/2 bg-stone-100" />
-      </div>
-    );
-  }
-
   const { cp, text } = parseEvalToCentipawns(evalScore);
   const whitePercent = getWhiteFillPercentage(cp, text.includes('M'));
 
-  // Adjust display based on board orientation
-  const isWhiteBottom = orientation === 'white';
-  const fillPercent = isWhiteBottom ? whitePercent : 100 - whitePercent;
+  // The lower segment always belongs to the player shown at the bottom.
+  const bottomIsWhite = orientation === 'white';
+  const bottomPercent = bottomIsWhite ? whitePercent : 100 - whitePercent;
+  const topIsWhite = !bottomIsWhite;
 
   return (
     <div
-      className={`relative flex flex-col justify-between overflow-hidden rounded-md border border-stone-700/40 bg-[#1e1c18] shadow-inner select-none ${className}`}
+      className={`relative flex flex-col justify-between overflow-hidden rounded-lg border border-stone-600/70 bg-stone-950 shadow-inner select-none ${className}`}
       title={`Stockfish Evaluation: ${text}`}
-      style={{ width: '22px', alignSelf: 'stretch' }}
+      aria-label={`Stockfish evaluation ${text}`}
+      style={{ width: '44px', alignSelf: 'stretch' }}
     >
-      {/* Top section (Black advantage area if white is bottom, White area if black is bottom) */}
       <div
-        className="w-full bg-stone-900 transition-all duration-500 ease-out flex items-start justify-center pt-1"
-        style={{ height: `${100 - fillPercent}%` }}
-      >
-        {!isWhiteBottom && cp > 0 && (
-          <span className="text-[10px] font-bold text-stone-200 tracking-tighter leading-none">
-            {text}
-          </span>
-        )}
-      </div>
+        className={`w-full transition-all duration-500 ease-out ${topIsWhite ? 'bg-stone-100' : 'bg-stone-950'}`}
+        style={{ height: `${100 - bottomPercent}%` }}
+      />
 
-      {/* Bottom section (White advantage area if white is bottom) */}
       <div
-        className="w-full bg-stone-100 transition-all duration-500 ease-out flex items-end justify-center pb-1 shadow-md"
-        style={{ height: `${fillPercent}%` }}
-      >
-        {isWhiteBottom && cp > 0 && (
-          <span className="text-[10px] font-bold text-stone-800 tracking-tighter leading-none">
-            {text}
-          </span>
-        )}
-        {!isWhiteBottom && cp < 0 && (
-          <span className="text-[10px] font-bold text-stone-800 tracking-tighter leading-none">
-            {text}
-          </span>
-        )}
-      </div>
+        className={`w-full shadow-md transition-all duration-500 ease-out ${bottomIsWhite ? 'bg-stone-100' : 'bg-stone-950'}`}
+        style={{ height: `${bottomPercent}%` }}
+      />
 
-      {/* Centered evaluation badge overlay */}
-      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center pointer-events-none">
-        <span className="rounded bg-black/60 px-1 py-0.5 text-[9px] font-extrabold text-amber-300 backdrop-blur-xs">
+      <div className="pointer-events-none absolute inset-x-1 top-1/2 flex -translate-y-1/2 justify-center">
+        <span className="w-full rounded-md border border-white/15 bg-stone-950/95 px-1 py-1 text-center text-[11px] font-extrabold leading-none tracking-[-0.02em] text-white shadow-lg">
           {text}
         </span>
       </div>

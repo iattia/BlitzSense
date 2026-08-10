@@ -133,7 +133,7 @@ export const Results: React.FC<ResultsProps> = ({ stats, difficulty, boardTheme,
           fen={round.fen}
           orientation={turn === 'w' ? 'white' : 'black'}
           side="top"
-          className="w-full max-w-md mb-1 pl-[31px]"
+          className="w-full max-w-md mb-1 pl-[52px]"
         />
 
         {/* Board + EvalBar */}
@@ -160,14 +160,14 @@ export const Results: React.FC<ResultsProps> = ({ stats, difficulty, boardTheme,
           fen={round.fen}
           orientation={turn === 'w' ? 'white' : 'black'}
           side="bottom"
-          className="w-full max-w-md mt-1 mb-2 pl-[31px]"
+          className="w-full max-w-md mt-1 mb-2 pl-[52px]"
         />
 
         {/* Arrow legend */}
-        <div className="flex gap-4 text-xs text-slate-400 mb-3">
-          <span className="flex items-center gap-1"><span className="w-3 h-1 rounded bg-emerald-400 inline-block" /> Played move</span>
+        <div className="flex flex-wrap justify-center gap-4 text-xs text-slate-400 mb-3">
+          <span className="flex items-center gap-1 text-emerald-400"><span className="w-3 h-1 rounded bg-emerald-400 inline-block" /> {round.bestMoves[0] === round.gmMove ? 'Engine #1 · played move' : 'Engine #1'}</span>
           {round.bestMoves[0] && round.bestMoves[0] !== round.gmMove && (
-            <span className="flex items-center gap-1"><span className="w-3 h-1 rounded bg-amber-600 inline-block" /> Engine best</span>
+            <span className="flex items-center gap-1 text-sky-400"><span className="w-3 h-1 rounded bg-sky-400 inline-block" /> Played move</span>
           )}
           {round.userMove && round.userMove !== round.gmMove && round.userMove !== round.bestMoves[0] && (
             <span className="flex items-center gap-1"><span className="w-3 h-1 rounded bg-rose-500 inline-block" /> Your move</span>
@@ -199,13 +199,13 @@ export const Results: React.FC<ResultsProps> = ({ stats, difficulty, boardTheme,
             </div>
             <div>
               <div className="text-slate-500 text-xs mb-1">Played in game</div>
-              <div className="text-emerald-400 font-mono font-bold text-lg">{round.gmMove}</div>
+              <div className="text-sky-400 font-mono font-bold text-lg">{round.gmMove}</div>
               <div className="mt-1 text-[10px] text-slate-500">{moveLossLabel(round.gmMove, turn, round.engineLines ?? [])}</div>
             </div>
             <div>
               <div className="text-slate-500 text-xs mb-1">Engine #1</div>
-              <div className="text-cyan-500 font-mono font-bold text-lg">{round.bestMoves[0] || '—'}</div>
-              <div className="mt-1 text-[10px] text-cyan-500/70">Best move</div>
+              <div className="text-emerald-400 font-mono font-bold text-lg">{round.bestMoves[0] || '—'}</div>
+              <div className="mt-1 text-[10px] text-emerald-400/75">Best move</div>
             </div>
           </div>
           {round.bestMoves.length > 1 && (
@@ -213,7 +213,7 @@ export const Results: React.FC<ResultsProps> = ({ stats, difficulty, boardTheme,
               <div className="text-slate-500 text-xs mb-2">Engine top moves</div>
               <div className="flex gap-2">
                 {round.bestMoves.map((m, i) => (
-                  <span key={i} className={`font-mono text-sm font-bold px-2 py-1 rounded-lg bg-slate-950 ${i === 0 ? 'text-cyan-500' : i === 1 ? 'text-cyan-400' : 'text-purple-400'}`}>
+                  <span key={i} className={`font-mono text-sm font-bold px-2 py-1 rounded-lg bg-slate-950 ${i === 0 ? 'text-emerald-400' : i === 1 ? 'text-cyan-400' : 'text-purple-400'}`}>
                     {i + 1}. {m}
                   </span>
                 ))}

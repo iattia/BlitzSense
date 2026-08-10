@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { seededShuffle, seedFromString } from './random';
+import { randomShuffle, seededShuffle, seedFromString } from './random';
 
 describe('deterministic random helpers', () => {
   it('creates a stable seed from a challenge date', () => {
@@ -13,5 +13,14 @@ describe('deterministic random helpers', () => {
     expect(first).toEqual(seededShuffle(source, 42));
     expect(first).not.toEqual(seededShuffle(source, 43));
     expect(source).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it('uses Fisher-Yates for unbiased session shuffling', () => {
+    const source = [1, 2, 3, 4];
+    const values = [0.5, 0, 0.75];
+    let index = 0;
+
+    expect(randomShuffle(source, () => values[index++])).toEqual([4, 2, 1, 3]);
+    expect(source).toEqual([1, 2, 3, 4]);
   });
 });

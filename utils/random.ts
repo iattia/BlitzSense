@@ -18,6 +18,16 @@ function mulberry32(seed: number): () => number {
   };
 }
 
+/** Unbiased Fisher-Yates shuffle for non-deterministic session content. */
+export function randomShuffle<T>(items: readonly T[], random: () => number = Math.random): T[] {
+  const result = [...items];
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+  return result;
+}
+
 /** Fisher-Yates shuffle that returns the same order for the same seed. */
 export function seededShuffle<T>(items: readonly T[], seed: number): T[] {
   const result = [...items];

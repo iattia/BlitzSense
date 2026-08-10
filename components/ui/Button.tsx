@@ -15,7 +15,7 @@ export const Button: React.FC<ButtonProps> = ({
   const baseStyles = "font-bold rounded-md transition-colors duration-150 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-50 disabled:cursor-not-allowed disabled:active:scale-100";
 
   const variants = {
-    primary: "bg-stone-800 hover:bg-stone-700 text-white focus:ring-stone-400 disabled:bg-stone-300 disabled:text-stone-500 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-white dark:disabled:bg-stone-700 dark:disabled:text-stone-500",
+    primary: "bg-[#53652c] hover:bg-[#465724] text-white focus:ring-[#748c4a] disabled:bg-stone-300 disabled:text-stone-500 dark:bg-[#91ad63] dark:text-[#1b1a18] dark:hover:bg-[#a6bd7e] dark:disabled:bg-stone-700 dark:disabled:text-stone-500",
     secondary: "bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 focus:ring-stone-300 dark:bg-stone-800 dark:border-stone-600 dark:text-stone-100 dark:hover:bg-stone-700",
     danger: "bg-rose-600 hover:bg-rose-500 text-white focus:ring-rose-500",
   };

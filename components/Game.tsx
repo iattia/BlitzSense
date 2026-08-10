@@ -88,7 +88,7 @@ export const Game: React.FC<GameProps> = ({
   const [timeLeft, setTimeLeft] = useState(moveTimeMs);
   const [, setLastTickSecond] = useState(-1);
 
-  const [moveStepIndex, setMoveStepIndex] = useState<number>(1);
+  const [moveStepIndex, setMoveStepIndex] = useState<number>(0);
   const [stats, setStats] = useState<GameStats>({
     score: 0,
     streak: 0,
@@ -274,6 +274,7 @@ export const Game: React.FC<GameProps> = ({
     if (analysisMode === 'end-only') {
       advanceOrEnd(newStats);
     } else {
+      setMoveStepIndex(0);
       setPhase('ANALYSIS');
     }
   };
@@ -288,6 +289,7 @@ export const Game: React.FC<GameProps> = ({
       const nextAnalyzed = nextRaw ? analyzedPositions.get(nextRaw.id) : null;
       setPhase(nextAnalyzed ? 'COUNTDOWN' : 'WAITING');
       setLastRoundResult(null);
+      setMoveStepIndex(0);
     } else {
       if (sessionEndingRef.current) return;
       sessionEndingRef.current = true;
@@ -318,7 +320,7 @@ export const Game: React.FC<GameProps> = ({
 
           <div className="relative overflow-hidden rounded-md" style={{ aspectRatio: '1' }}>
             {firstPos ? (
-              <div className="pointer-events-none h-full w-full scale-[1.015] blur-[2px] brightness-[0.86]">
+              <div className="pointer-events-none h-full w-full brightness-[0.78] saturate-[0.9]">
                 <ChessgroundBoard
                   fen={firstPos.fen}
                   boardOrientation={firstPos.turn === 'w' ? 'white' : 'black'}
@@ -425,6 +427,7 @@ export const Game: React.FC<GameProps> = ({
   // the board + sidebar stay put and only the prompt/timer slots change content.
   // We do the same here instead of branching into a separate full-page view.
   const isAnalysis = phase === 'ANALYSIS' && !!lastRoundResult;
+  const showMoveAnalysis = isAnalysis && moveStepIndex === 1;
   const boardFen = isAnalysis ? lastRoundResult!.fen : (currentPos?.fen ?? '');
   const boardTurn: 'w' | 'b' = isAnalysis
     ? (new Chess(lastRoundResult!.fen).turn() as 'w' | 'b')
@@ -517,16 +520,15 @@ export const Game: React.FC<GameProps> = ({
               fen={boardFen}
               orientation={boardTurn === 'w' ? 'white' : 'black'}
               side="top"
-              className="mb-1 pl-[31px]"
+              className={`mb-1 ${showMoveAnalysis ? 'pl-[52px]' : ''}`}
             />
           )}
 
           {/* Board + EvalBar container */}
           <div className="relative w-full flex items-stretch gap-2">
-            {!!boardFen && (
+            {!!boardFen && showMoveAnalysis && (
               <EvalBar
-                evalScore={isAnalysis ? formatEngineEvaluation(lastRoundResult?.evaluation) : undefined}
-                concealed={!isAnalysis}
+                evalScore={formatEngineEvaluation(lastRoundResult?.evaluation)}
                 orientation={boardTurn === 'w' ? 'white' : 'black'}
                 className="h-auto shrink-0"
               />
@@ -546,12 +548,11 @@ export const Game: React.FC<GameProps> = ({
                   onPieceDrop={onPieceDrop}
                   boardTheme={boardTheme}
                   interactive={phase === 'ACTIVE'}
-                  moveShapes={isAnalysis && lastRoundResult && moveStepIndex === 1 ? getMoveShapes(lastRoundResult.fen, {
+                  moveShapes={showMoveAnalysis && lastRoundResult ? getMoveShapes(lastRoundResult.fen, {
                     engineMove: lastRoundResult.bestMoves[0],
                     gmMove: lastRoundResult.gmMove,
                     userMove: lastRoundResult.userMove,
                   }) : undefined}
-                  highlightMove={isAnalysis && moveStepIndex === 1 ? lastRoundResult!.bestMoves[0] : undefined}
                 />
               )}
               {phase === 'PROMOTION' && pendingPromotion && currentPos && (
@@ -593,7 +594,7 @@ export const Game: React.FC<GameProps> = ({
               fen={boardFen}
               orientation={boardTurn === 'w' ? 'white' : 'black'}
               side="bottom"
-              className="mt-1 pl-[31px]"
+              className={`mt-1 ${showMoveAnalysis ? 'pl-[52px]' : ''}`}
             />
           )}
 
@@ -609,52 +610,65 @@ export const Game: React.FC<GameProps> = ({
                   </div>
                   <div>
                     <div className="text-slate-500 text-xs mb-1">Played in game</div>
-                    <div className="text-emerald-400 font-mono font-bold text-lg">{lastRoundResult!.gmMove}</div>
+                    <div className="text-sky-400 font-mono font-bold text-lg">{lastRoundResult!.gmMove}</div>
                     <div className="mt-1 text-[10px] text-slate-500">{formatMoveLoss(lastRoundResult!.gmMove, boardTurn, lastRoundResult!.engineLines ?? [])}</div>
                   </div>
                   <div>
                     <div className="text-slate-500 text-xs mb-1">Engine #1</div>
-                    <div className="text-cyan-500 font-mono font-bold text-lg">{lastRoundResult!.bestMoves[0] || '—'}</div>
-                    <div className="mt-1 text-[10px] text-cyan-500/70">Best move</div>
+                    <div className="text-emerald-400 font-mono font-bold text-lg">{lastRoundResult!.bestMoves[0] || '—'}</div>
+                    <div className="mt-1 text-[10px] text-emerald-400/75">Best move</div>
                   </div>
                 </div>
 
-                {/* Move Stepper Controls */}
-                <div className="mt-3 border-t border-slate-700/80 pt-3 flex items-center justify-between">
+                {/* Analysis view toggle */}
+                <div className="mt-3 border-t border-slate-700/80 pt-3">
+                  <div className="grid grid-cols-2 gap-1 rounded-lg border border-slate-700 bg-slate-900/70 p-1" role="group" aria-label="Board view">
                   <button
                     type="button"
-                    onClick={() => setMoveStepIndex(prev => Math.max(0, prev - 1))}
-                    disabled={moveStepIndex === 0}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-slate-700 text-xs font-semibold text-slate-200 transition hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                    aria-pressed={moveStepIndex === 0}
+                    onClick={() => setMoveStepIndex(0)}
+                    className={`inline-flex items-center justify-center gap-1 rounded-md px-3 py-2 text-xs font-semibold transition ${moveStepIndex === 0
+                      ? 'bg-slate-700 text-slate-100 shadow-sm'
+                      : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                    }`}
                   >
-                    <ChevronLeft className="w-4 h-4" /> Start Position
+                    <ChevronLeft className="w-4 h-4" /> Start position
                   </button>
-                  <span className="text-xs font-mono font-bold text-cyan-400">
-                    {moveStepIndex === 0 ? 'Starting Position' : 'Move Arrows Shown'}
-                  </span>
                   <button
                     type="button"
-                    onClick={() => setMoveStepIndex(prev => Math.min(1, prev + 1))}
-                    disabled={moveStepIndex === 1}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-slate-700 text-xs font-semibold text-slate-200 transition hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                    aria-pressed={moveStepIndex === 1}
+                    onClick={() => setMoveStepIndex(1)}
+                    className={`inline-flex items-center justify-center gap-1 rounded-md px-3 py-2 text-xs font-semibold transition ${moveStepIndex === 1
+                      ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                      : 'text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300'
+                    }`}
                   >
                     Analysis <ChevronRight className="w-4 h-4" />
                   </button>
+                  </div>
+                  <p className="mt-2 text-center text-[11px] leading-4 text-slate-500">
+                    {moveStepIndex === 0
+                      ? 'Open Analysis to reveal the engine evaluation and move arrows.'
+                      : 'Engine evaluation and comparison arrows are shown.'}
+                  </p>
                 </div>
 
-                <div className="mt-3 border-t border-slate-700/80 pt-2.5 flex flex-wrap items-center justify-center gap-4 text-xs">
+                {showMoveAnalysis ? <div className="mt-3 border-t border-slate-700/80 pt-2.5 flex flex-wrap items-center justify-center gap-4 text-xs">
                   <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block" /> Engine #1
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block" />
+                    {lastRoundResult!.bestMoves[0] === lastRoundResult!.gmMove ? 'Engine #1 · played move' : 'Engine #1'}
                   </span>
-                  <span className="flex items-center gap-1.5 text-cyan-400 font-medium">
-                    <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block" /> Played move
-                  </span>
+                  {lastRoundResult!.bestMoves[0] !== lastRoundResult!.gmMove ? (
+                    <span className="flex items-center gap-1.5 text-sky-400 font-medium">
+                      <span className="w-2.5 h-2.5 rounded-full bg-sky-400 inline-block" /> Played move
+                    </span>
+                  ) : null}
                   {lastRoundResult!.userMove && lastRoundResult!.userMove !== lastRoundResult!.bestMoves[0] && lastRoundResult!.userMove !== lastRoundResult!.gmMove && (
                     <span className="flex items-center gap-1.5 text-rose-400 font-medium">
                       <span className="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block" /> Your Move
                     </span>
                   )}
-                </div>
+                </div> : null}
               </div>
             </div>
           ) : (
@@ -723,10 +737,10 @@ export const Game: React.FC<GameProps> = ({
               </div>
             )}
             <div className="text-slate-500 text-xs mt-1">Local Stockfish evaluation</div>
-            {isAnalysis && !!lastRoundResult!.gameUrl && (
-              <a href={lastRoundResult!.gameUrl} target="_blank" rel="noopener noreferrer"
-                className="mt-2 flex items-center gap-1 text-slate-500 hover:text-cyan-400 transition-colors text-xs">
-                <ExternalLink className="w-3 h-3" /> {lastRoundResult!.gameUrl.includes('chess.com') ? 'View on Chess.com' : 'View on Lichess'}
+            {isAnalysis && !!(lastRoundResult?.gameUrl || rawPos?.gameUrl) && (
+              <a href={lastRoundResult?.gameUrl || rawPos?.gameUrl} target="_blank" rel="noopener noreferrer"
+                className="mt-3 flex min-h-9 items-center justify-center gap-1.5 rounded-md border border-cyan-500/40 bg-cyan-500/10 px-3 text-xs font-bold text-cyan-300 transition-colors hover:border-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-400">
+                <ExternalLink className="h-3.5 w-3.5" /> {(lastRoundResult?.gameUrl || rawPos?.gameUrl)?.includes('chess.com') ? 'View on Chess.com' : 'View on Lichess'}
               </a>
             )}
           </div>

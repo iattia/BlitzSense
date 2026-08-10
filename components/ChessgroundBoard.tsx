@@ -41,7 +41,12 @@ const BOARD_THEMES: Record<BoardTheme, { light: string; dark: string; lastMove: 
   },
 };
 
-
+const MOVE_ARROW_BRUSHES = {
+  green: { key: 'engine', color: '#22c55e', opacity: 0.92, lineWidth: 10 },
+  blue: { key: 'played', color: '#38bdf8', opacity: 0.92, lineWidth: 10 },
+  red: { key: 'user', color: '#fb7185', opacity: 0.94, lineWidth: 10 },
+  yellow: { key: 'alternate', color: '#fbbf24', opacity: 0.92, lineWidth: 10 },
+};
 
 // Generate valid destinations Map for Chessground based on chess.js
 const getDests = (fen: string) => {
@@ -159,6 +164,7 @@ export const ChessgroundBoard: React.FC<ChessgroundBoardProps> = ({
         enabled: true,
         visible: true,
         autoShapes: autoShapes,
+        brushes: MOVE_ARROW_BRUSHES,
       },
       animation: {
         enabled: true,
@@ -197,6 +203,7 @@ export const ChessgroundBoard: React.FC<ChessgroundBoardProps> = ({
         enabled: true,
         visible: true,
         autoShapes: autoShapes,
+        brushes: MOVE_ARROW_BRUSHES,
       },
     } as any);
 
@@ -340,23 +347,6 @@ export const ChessgroundBoard: React.FC<ChessgroundBoardProps> = ({
             rgba(239, 68, 68, 0.3) 45%,
             transparent 75%
           ) !important;
-        }
-
-        /* Shape arrows styling for Engine (Green), GM (Blue), and User (Red/Yellow) */
-        .chessground-board-container cg-board svg.cg-shapes g[stroke="green"] {
-          opacity: 0.92;
-        }
-        .chessground-board-container cg-board svg.cg-shapes g[stroke="blue"] {
-          opacity: 0.92;
-          stroke: #38bdf8 !important;
-        }
-        .chessground-board-container cg-board svg.cg-shapes g[stroke="red"] {
-          opacity: 0.92;
-          stroke: #f87171 !important;
-        }
-        .chessground-board-container cg-board svg.cg-shapes g[stroke="yellow"] {
-          opacity: 0.92;
-          stroke: #fbbf24 !important;
         }
 
         /* Piece shadow during drag */

@@ -5,12 +5,32 @@ import type { ProgressContext } from '../services/progress';
 import { loadSeenGames } from '../services/progress';
 
 interface PrefetchedSession {
+  requestKey: string;
   rawPositions: RawPosition[];
   analyzedPositions: Map<string, ChessPosition>;
   analyzeQueue: RawPosition[];
 }
 
 const ANALYSIS_CONCURRENCY = 1;
+
+export function sessionRequestKey(
+  difficulty: Difficulty,
+  count: number,
+  filter: GameTypeFilter,
+  openingFilter: string[],
+  colorPref: ColorPref,
+  ratingRange: RatingRange,
+): string {
+  return JSON.stringify({
+    difficulty,
+    count,
+    filter,
+    openingFilter: openingFilter.map((opening) => opening.trim().toLowerCase()).sort(),
+    colorPref,
+    ratingMin: ratingRange.min,
+    ratingMax: ratingRange.max,
+  });
+}
 
 async function analyzeWithRetry(raw: RawPosition, engineDepth: EngineDepth): Promise<ChessPosition> {
   return analyzeRawPosition(raw, engineDepth);
@@ -86,6 +106,7 @@ export function usePositionSession({ progressCtx, onError, engineDepth }: UsePos
     isPrefetchingRef.current = true;
     prefetchRef.current = null;
     const generation = prefetchGenerationRef.current;
+    const requestKey = sessionRequestKey(d, count, filter, opFilter, colorPref, ratingRange);
     const controller = new AbortController();
     prefetchAbortControllerRef.current = controller;
 
@@ -114,7 +135,7 @@ export function usePositionSession({ progressCtx, onError, engineDepth }: UsePos
 
       const remaining = raws.filter(r => !analyzed.has(r.id));
       if (!controller.signal.aborted && generation === prefetchGenerationRef.current) {
-        prefetchRef.current = { rawPositions: raws, analyzedPositions: analyzed, analyzeQueue: remaining };
+        prefetchRef.current = { requestKey, rawPositions: raws, analyzedPositions: analyzed, analyzeQueue: remaining };
       }
     } catch (error) {
       if (!(error instanceof Error && error.name === 'AbortError')) {
@@ -135,7 +156,8 @@ export function usePositionSession({ progressCtx, onError, engineDepth }: UsePos
     ratingRange: RatingRange = { min: 2000, max: null },
     options?: { gmUsername?: string; prefetchAfter?: boolean; dailyKey?: string },
   ): Promise<boolean> => {
-    if (prefetchRef.current && !options?.gmUsername) {
+    const requestKey = sessionRequestKey(d, count, filter, opFilter, colorPref, ratingRange);
+    if (prefetchRef.current && !options?.gmUsername && prefetchRef.current.requestKey === requestKey) {
       const pf = prefetchRef.current;
       prefetchRef.current = null;
       analyzeQueueRef.current = pf.analyzeQueue;
@@ -146,6 +168,9 @@ export function usePositionSession({ progressCtx, onError, engineDepth }: UsePos
         prefetchNextSession(d, count, filter, opFilter, colorPref, ratingRange);
       }
       return true;
+    }
+    if (prefetchRef.current && prefetchRef.current.requestKey !== requestKey) {
+      invalidatePrefetch();
     }
 
     if (activeAbortControllerRef.current) {
@@ -176,11 +201,10 @@ export function usePositionSession({ progressCtx, onError, engineDepth }: UsePos
         throw new Error('No positions returned');
       }
 
-      // Warn if opening filter left us with fewer positions than requested
-      if (raws.length < count && opFilter.length > 0) {
+      if (raws.length < count) {
         setPartialWarning(
-          `Only ${raws.length} position${raws.length === 1 ? '' : 's'} found for this opening — ` +
-          `try selecting a broader opening or removing the filter for more variety.`,
+          `Only ${raws.length} of ${count} live position${raws.length === 1 ? '' : 's'} matched these settings. ` +
+          `Try a broader opening, game type, or rating range for a full session.`,
         );
       }
 
@@ -206,7 +230,7 @@ export function usePositionSession({ progressCtx, onError, engineDepth }: UsePos
       }
       setIsLoadingRaw(false);
     }
-  }, [onError, prefetchNextSession, startAnalysisQueue]);
+  }, [invalidatePrefetch, onError, prefetchNextSession, startAnalysisQueue]);
 
   const cancelLoad = useCallback(() => {
     if (activeAbortControllerRef.current) {

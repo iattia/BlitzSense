@@ -260,10 +260,13 @@ export const Home: React.FC<HomeProps> = (props) => {
   const { signOut } = useAuth();
   const displayName = props.user?.user_metadata?.name ?? props.user?.email?.split('@')[0] ?? 'Player';
   return (
-    <div className="min-h-screen bg-[#f1f0eb] text-stone-900 transition-colors dark:bg-[#1b1a18] dark:text-stone-100">
-      <header className="h-16 border-b border-stone-200 bg-white transition-colors dark:border-stone-800 dark:bg-[#22211f]">
+    <div className="min-h-screen bg-[#f5f4ef] text-stone-900 transition-colors dark:bg-[#191917] dark:text-stone-100">
+      <header className="h-[4.25rem] border-b border-stone-200/80 bg-[#fbfaf7]/90 transition-colors backdrop-blur dark:border-stone-800/80 dark:bg-[#1d1d1b]/90">
         <div className="h-full max-w-5xl mx-auto px-4 sm:px-6 flex items-center justify-between">
-          <div className="text-lg font-bold tracking-tight">BlitzSense</div>
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#53652c] text-xs font-bold text-white shadow-sm dark:bg-[#91ad63] dark:text-[#1b1a18]" aria-hidden="true">B</span>
+            <div className="text-[1.05rem] font-bold tracking-[-0.02em]">BlitzSense</div>
+          </div>
           <div className="flex items-center gap-1">
             {props.isGuest ? (
               <button onClick={props.onSignIn} className="hidden h-9 items-center gap-2 px-3 text-sm font-medium text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-white sm:flex">
@@ -274,63 +277,61 @@ export const Home: React.FC<HomeProps> = (props) => {
             ) : null}
             <button
               onClick={() => props.setAppearance(props.appearance === 'dark' ? 'light' : 'dark')}
-              className="rounded p-2 text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+              className="rounded-lg p-2 text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#748c4a]/50 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
               aria-label={props.appearance === 'dark' ? 'Use light mode' : 'Use dark mode'}
               title={props.appearance === 'dark' ? 'Light mode' : 'Dark mode'}
             >
               {props.appearance === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
-            <button onClick={props.onShowHistory} className="rounded p-2 text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-white" aria-label="View history"><History className="w-5 h-5" /></button>
-            <button onClick={() => setShowSettings(true)} className="rounded p-2 text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-white" aria-label="Open settings"><Settings2 className="w-5 h-5" /></button>
-            {props.user && <button onClick={signOut} className="hidden sm:block p-2 text-stone-500 hover:bg-stone-100 hover:text-stone-900 rounded" aria-label="Sign out"><LogOut className="w-5 h-5" /></button>}
+            <button onClick={props.onShowHistory} className="rounded-lg p-2 text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#748c4a]/50 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-white" aria-label="View history"><History className="w-5 h-5" /></button>
+            <button onClick={() => setShowSettings(true)} className="rounded-lg p-2 text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#748c4a]/50 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-white" aria-label="Open settings"><Settings2 className="w-5 h-5" /></button>
+            {props.user && <button onClick={signOut} className="hidden rounded-lg p-2 text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#748c4a]/50 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-white sm:block" aria-label="Sign out"><LogOut className="w-5 h-5" /></button>}
           </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
-        <div className="mb-5 flex items-end justify-between gap-4">
+      <main className="mx-auto max-w-5xl px-4 py-9 sm:px-6 sm:py-12">
+        <div className="mb-7 flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">Training</h1>
-            <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">Real rated games, evaluated on your device.</p>
+            <h1 className="text-[1.75rem] font-bold tracking-[-0.035em] text-stone-900 dark:text-stone-100 sm:text-3xl">Training</h1>
+            <p className="mt-1.5 text-sm text-stone-500 dark:text-stone-400">Real rated games, evaluated on your device.</p>
           </div>
-          <button onClick={() => setShowSettings(true)} className="inline-flex h-9 items-center gap-2 rounded-md border border-stone-300 bg-white px-3 text-sm font-medium text-stone-700 hover:border-stone-400 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200 dark:hover:bg-stone-800">
+          <button onClick={() => setShowSettings(true)} className="inline-flex h-10 items-center gap-2 rounded-lg border border-stone-300/90 bg-white px-3.5 text-sm font-semibold text-stone-700 shadow-sm transition hover:border-stone-400 hover:bg-stone-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#748c4a]/50 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200 dark:hover:bg-stone-800">
             <Settings2 className="h-4 w-4" /> All settings
           </button>
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
-          <section className="rounded-lg border border-stone-200 bg-white dark:border-stone-800 dark:bg-[#22211f]" aria-label="Start a training session">
-            <div className="border-b border-stone-200 px-5 py-4 dark:border-stone-800 sm:px-6">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18.5rem]">
+          <section className="overflow-hidden rounded-2xl border border-stone-200/90 bg-white shadow-[0_10px_32px_rgba(41,37,36,0.04)] dark:border-stone-800 dark:bg-[#22211f] dark:shadow-none" aria-label="Start a training session">
+            <div className="border-b border-stone-200/90 px-5 py-5 dark:border-stone-800 sm:px-6">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="font-semibold text-stone-900 dark:text-stone-100">Move training</h2>
-                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-500 dark:text-stone-400"><Cpu className="h-3.5 w-3.5" /> Local Stockfish</span>
+                <h2 className="text-[1.05rem] font-semibold tracking-[-0.015em] text-stone-900 dark:text-stone-100">Move training</h2>
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-500 dark:text-stone-400"><Cpu className="h-3.5 w-3.5 text-[#748c4a] dark:text-[#b3c78f]" /> Local Stockfish</span>
               </div>
-              <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">Find the best move, then compare it with what was played.</p>
+              <p className="mt-1.5 max-w-xl text-sm leading-6 text-stone-500 dark:text-stone-400">Find the best move, then compare it with what was played.</p>
             </div>
 
-            <div className="space-y-6 px-5 py-5 sm:px-6 sm:py-6">
-              {/* Active Session Configuration Badges */}
+            <div className="space-y-7 px-5 py-6 sm:px-6 sm:py-7">
+              {/* Active Session Configuration */}
               <div>
-                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">Current Session Preset</div>
-                <div className="flex flex-wrap gap-2">
-                  <span className="inline-flex items-center rounded-md bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700 dark:bg-stone-800 dark:text-stone-300">
-                    {props.positionCount} Puzzles
-                  </span>
-                  <span className="inline-flex items-center rounded-md bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700 dark:bg-stone-800 dark:text-stone-300">
-                    {props.currentDifficulty} Difficulty
-                  </span>
-                  <span className="inline-flex items-center rounded-md bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700 dark:bg-stone-800 dark:text-stone-300">
-                    {props.timerMode === 'zen' ? 'No Timer' : 'Timed'}
-                  </span>
-                  <span className="inline-flex items-center rounded-md bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700 dark:bg-stone-800 dark:text-stone-300">
-                    {props.colorPref === 'random' ? 'Either Side' : props.colorPref === 'white' ? 'White' : 'Black'}
-                  </span>
-                  {props.gameTypeFilter !== 'all' && (
-                    <span className="inline-flex items-center rounded-md bg-[#53652c]/10 px-2.5 py-1 text-xs font-semibold text-[#53652c] dark:bg-[#91ad63]/15 dark:text-[#c6d9a2]">
-                      {props.gameTypeFilter.toUpperCase()}
-                    </span>
-                  )}
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">Current session</div>
+                  <button type="button" onClick={() => setShowSettings(true)} className="text-xs font-semibold text-[#5f763b] transition hover:text-[#465724] focus:outline-none focus-visible:underline dark:text-[#b3c78f] dark:hover:text-[#c6d9a2]">Edit</button>
                 </div>
+                <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-stone-200 bg-stone-200/80 dark:border-stone-700 dark:bg-stone-700/60 sm:grid-cols-4">
+                  {[
+                    ['Positions', String(props.positionCount)],
+                    ['Difficulty', props.currentDifficulty],
+                    ['Pace', props.timerMode === 'zen' ? 'No timer' : 'Timed'],
+                    ['Playing as', props.colorPref === 'random' ? 'Either side' : props.colorPref === 'white' ? 'White' : 'Black'],
+                  ].map(([label, value]) => (
+                    <div key={label} className="bg-white px-3 py-3 dark:bg-[#292927]">
+                      <dt className="text-[0.68rem] font-medium uppercase tracking-[0.08em] text-stone-500 dark:text-stone-400">{label}</dt>
+                      <dd className="mt-1 text-sm font-semibold text-stone-800 dark:text-stone-100">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                {props.gameTypeFilter !== 'all' && <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">Source filter: <span className="font-semibold text-stone-700 dark:text-stone-200">{props.gameTypeFilter.toUpperCase()}</span></p>}
               </div>
 
               {props.openingFilter.length > 0 && (
@@ -342,7 +343,7 @@ export const Home: React.FC<HomeProps> = (props) => {
 
               {/* Action buttons */}
               <div className="border-t border-stone-200 pt-5 dark:border-stone-800 space-y-2.5">
-                <Button onClick={props.onStart} size="md" className="w-full text-base font-bold">
+                <Button onClick={props.onStart} size="md" className="w-full text-base font-bold shadow-sm">
                   Start Training Session
                 </Button>
                 <button
@@ -356,8 +357,8 @@ export const Home: React.FC<HomeProps> = (props) => {
             </div>
           </section>
 
-          <aside className="space-y-4">
-            <section className="rounded-lg border border-stone-200 bg-white p-5 dark:border-stone-800 dark:bg-[#22211f]">
+          <aside className="space-y-5">
+            <section className="rounded-2xl border border-stone-200/90 bg-white p-5 shadow-[0_10px_32px_rgba(41,37,36,0.03)] dark:border-stone-800 dark:bg-[#22211f] dark:shadow-none">
               <div className="flex items-center gap-2 text-stone-700 dark:text-stone-200"><Trophy className="h-4 w-4 text-[#748c4a] dark:text-[#b3c78f]" /><h2 className="text-sm font-semibold">Progress</h2></div>
               <div className="mt-4 grid grid-cols-2 divide-x divide-stone-200 dark:divide-stone-700">
                 <div><div className="text-2xl font-semibold tabular-nums">{props.highScore || '—'}</div><div className="mt-1 text-xs text-stone-500 dark:text-stone-400">Best score</div></div>
@@ -366,7 +367,7 @@ export const Home: React.FC<HomeProps> = (props) => {
               {props.streak > 0 && <p className="mt-4 border-t border-stone-200 pt-3 text-xs text-stone-600"><span className="font-semibold text-stone-900">{props.streak} day</span> current streak</p>}
             </section>
 
-            <button onClick={() => setShowDailyChallenge(true)} className="w-full rounded-lg border border-stone-200 bg-white p-5 text-left transition-colors hover:border-stone-400 dark:border-stone-800 dark:bg-[#22211f] dark:hover:border-stone-600">
+            <button onClick={() => setShowDailyChallenge(true)} className="w-full rounded-2xl border border-stone-200/90 bg-white p-5 text-left shadow-[0_10px_32px_rgba(41,37,36,0.03)] transition hover:-translate-y-0.5 hover:border-stone-400 hover:shadow-[0_14px_36px_rgba(41,37,36,0.06)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#748c4a]/50 dark:border-stone-800 dark:bg-[#22211f] dark:shadow-none dark:hover:border-stone-600">
               <div className="flex items-center gap-2 text-stone-700 dark:text-stone-200"><Calendar className="h-4 w-4 text-[#748c4a] dark:text-[#b3c78f]" /><h2 className="text-sm font-semibold">Daily challenge</h2></div>
               <p className="mt-2 text-sm leading-5 text-stone-500 dark:text-stone-400">10 positions. 10 seconds each.</p>
               <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[#5f763b] dark:text-[#b3c78f]">Play today <ChevronRight className="h-4 w-4" /></span>

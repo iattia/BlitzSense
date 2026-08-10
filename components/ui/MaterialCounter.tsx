@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import { getMaterialBalance } from '../../utils/chessLogic';
 
 interface MaterialCounterProps {
@@ -28,6 +28,54 @@ function capturedDescription(captured: CapturedPieces): string {
   return parts.length > 0 ? parts.join(', ') : 'no captured pieces';
 }
 
+function PieceStrip({
+  captured,
+  capturedColor,
+}: {
+  captured: CapturedPieces;
+  capturedColor: 'white' | 'black';
+}) {
+  const stripRef = useRef<HTMLSpanElement>(null);
+  const { p, n, b, r, q } = captured;
+
+  useLayoutEffect(() => {
+    const strip = stripRef.current;
+    if (!strip) return;
+
+    const fragment = document.createDocumentFragment();
+    const counts: CapturedPieces = { p, n, b, r, q };
+    let pieceIndex = 0;
+
+    for (const type of PIECE_ORDER) {
+      for (let index = 0; index < counts[type]; index += 1) {
+        // Chessground's piece artwork is keyed to the custom <piece> tag.
+        // Create those static decorative nodes directly so React does not emit
+        // an unknown-element warning for every captured piece.
+        const piece = document.createElement('piece');
+        piece.className = `material-piece ${PIECE_CLASSES[type]} ${capturedColor}`;
+        piece.title = `${capturedColor} ${PIECE_NAMES[type]}`;
+        piece.style.position = 'static';
+        piece.style.display = 'inline-block';
+        piece.style.width = '22px';
+        piece.style.height = '22px';
+        piece.style.marginLeft = pieceIndex === 0 ? '0' : '-2px';
+        piece.style.backgroundPosition = 'center';
+        piece.style.backgroundRepeat = 'no-repeat';
+        piece.style.backgroundSize = 'contain';
+        piece.style.filter = capturedColor === 'white'
+          ? 'drop-shadow(0 0 1px rgba(0, 0, 0, 0.95)) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45))'
+          : 'drop-shadow(0 0 1px rgba(255, 255, 255, 0.9)) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.65))';
+        fragment.appendChild(piece);
+        pieceIndex += 1;
+      }
+    }
+
+    strip.replaceChildren(fragment);
+  }, [b, capturedColor, n, p, q, r]);
+
+  return <span ref={stripRef} className="cg-wrap flex min-w-0 items-center overflow-hidden" aria-hidden="true" />;
+}
+
 function MaterialRow({
   playerColor,
   captured,
@@ -40,34 +88,20 @@ function MaterialRow({
   // A player's capture row displays the opposing pieces they have taken.
   const capturedColor = playerColor === 'white' ? 'black' : 'white';
   const label = `${playerColor === 'white' ? 'White' : 'Black'} captured ${capturedDescription(captured)}${advantage > 0 ? ` and leads by ${advantage} point${advantage === 1 ? '' : 's'}` : ''}`;
+  const hasCapturedPieces = PIECE_ORDER.some((type) => captured[type] > 0);
 
   return (
-    <div className="flex min-h-6 items-center gap-1" aria-label={label}>
-      <span className="cg-wrap flex min-w-0 items-center overflow-hidden" aria-hidden="true">
-        {PIECE_ORDER.flatMap((type) => Array.from({ length: captured[type] }, (_, index) => (
-          React.createElement('piece', {
-            key: `${type}-${index}`,
-            title: `${capturedColor} ${PIECE_NAMES[type]}`,
-            className: `material-piece ${PIECE_CLASSES[type]} ${capturedColor} -ml-0.5 first:ml-0 drop-shadow-sm`,
-            style: {
-              position: 'static',
-              display: 'inline-block',
-              width: '20px',
-              height: '20px',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat',
-              backgroundSize: 'contain',
-            },
-          })
-        )))}
-      </span>
-
-      <span className={`shrink-0 text-xs font-semibold tabular-nums ${advantage > 0
-        ? 'text-stone-700 dark:text-stone-200'
-        : 'text-transparent'
-      }`} aria-hidden="true">
-        {advantage > 0 ? `+${advantage}` : ''}
-      </span>
+    <div className="flex min-h-7 items-center" aria-label={label}>
+      {hasCapturedPieces ? (
+        <div className="inline-flex max-w-full items-center gap-1 rounded-md border border-stone-400/45 bg-stone-500/10 px-1.5 py-0.5 dark:border-stone-500/60 dark:bg-stone-100/10">
+          <PieceStrip captured={captured} capturedColor={capturedColor} />
+          {advantage > 0 ? (
+            <span className="shrink-0 text-xs font-bold tabular-nums text-stone-800 dark:text-stone-100" aria-hidden="true">
+              +{advantage}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -90,7 +124,7 @@ export const MaterialCounter: React.FC<MaterialCounterProps> = ({
 
   const isTop = side === 'top';
   return (
-    <div className={`w-full px-1 ${className}`}>
+    <div className={`w-full ${className}`}>
       <MaterialRow
         playerColor={isTop ? topPlayerColor : bottomPlayerColor}
         captured={isTop ? topCaptured : bottomCaptured}
